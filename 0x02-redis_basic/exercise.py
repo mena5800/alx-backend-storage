@@ -5,6 +5,25 @@ this module contain class Cache that represent redis cache controller.
 import redis
 import uuid
 from typing import Union, Callable, Optional, Any
+from functools import wraps
+
+
+def count_calls(func: Callable) -> Callable:
+    """
+    decorator function that count the number of times func stores.
+    """
+    @wraps(func)
+    def wrapper(self, *args, **kwargs) -> Any:
+        """
+        wrapper function that return the output of func.
+        """
+        if self._redis.get(func.__qualname__) is None:
+            self._redis.set(func.__qualname__, 1)
+        else:
+            self._redis.incr(func.__qualname__)
+        return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class Cache:
@@ -13,6 +32,7 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb()
 
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
         takes a data argument and returns a string.
